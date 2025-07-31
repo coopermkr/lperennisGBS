@@ -117,8 +117,31 @@ load("4.translocation/vtTransBad.RData")
 necalcs(vtTransBad)
 
 # Plot each simulation together
-ggplot(data = ne,
-       mapping = aes(x = year, y = mean_vp, color = sim)) +
+simpal <- c("darkgrey", "#D64550", "#4F9DDE", "#B07CCC")
+
+ne |>
+  mutate(sim = factor(sim, levels = c("vtDrift", "vtBad", "vtTrans", "vtTransBad"))) |>
+  ggplot(mapping = aes(x = year, y = mean_vp, color = sim, shape = sim)) +
   geom_point() +
   geom_errorbar(aes(ymin = mean_vp - se_vp, ymax = mean_vp + se_vp)) +
-  theme_classic()
+  theme_classic(base_size = 16) +
+  labs(title = "Vermont Restoration Forecast",
+       x = "Forecasted Year",
+       y = "Effective Population Size (VP)") +
+  scale_color_manual(name = "Simulation", 
+                     labels = c("No Action",
+                                "No Action/Periodic Catastrophe",
+                                "Translocation",
+                                "Translocation/Periodic Catastrophe"),
+                     values = simpal) +
+  geom_vline(xintercept = 4, linetype = 2) +
+  guides(shape = "none") +
+         #color = guide_legend(nrow = 2)) +
+  theme(legend.position.inside = c(0.3, 0.88),
+        legend.position = "inside",
+        legend.title = element_blank())
+
+jpeg(neplot, filename = "4.translocation/nevp.jpg", 
+     height = 6, width = 8.5, units = "in", res = 100)
+neplot
+dev.off()

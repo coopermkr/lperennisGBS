@@ -55,11 +55,11 @@ vt92tab <- vt92tab[,common]
 reprorate <- c(0, 0, 0.2, 0.4, 0.6, 0.7, 0.8, 0.9, 1, 1) # Reproduction rates
 surrate <- c(0.3, 0.3, rep(0.75, 7), 0) # Pulled from Pavlovic
 meth <- "repro_pool"
-burn <- 50 # burn-in generations to create stable age distribution
-nind <- 22 # Starting population size
+burn <- 100 # burn-in generations to create stable age distribution
+nind <- 44 # Starting population size
 years <- 100 # Number of simulation years
-gr <- 0.0125 # Population variation rate mean- estimated from census
-gm <- "ann"  # growth model
+gr <- c(0.0125,.001) # Population variation rate mean- estimated from census
+gm <- "exp"  # growth model
 reps <- 5 # Number of replicates to run
 nvar <- 0.15 # Variance in initial population size
 noff <- 280 # Maximum offspring per individual allowed per year
@@ -90,7 +90,7 @@ tsr <- c(1, 0.3) # Transplant survival rate- Pulled from Gibbs
 trr <- c(0, 0) # Transplant reproduction rates-- assuming seeds
 yeffect <- 2 # Number of years transplant survival applies- Pulled from Gibbs/Pavlovic
 tr_in <- af(vt92tab) # List of 92-CL allele frequencies
-ntran <- 12 # Number of transplants
+ntran <- 24 # Number of transplants
 ytran <- 4 # Year of augmentation
 
 vtTrans <- effect_sim(pop = vttab, syears = 1:years, n = nind, n_rep = reps, 

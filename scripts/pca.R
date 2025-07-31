@@ -1,71 +1,73 @@
 #'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 #'
-#' L. perennis PCA
+#' L. perennis PCA Northeast Sites
 #' @date 2024-07-31
 #' @author Cooper Kimball-Rhines
 #' 
 #'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-setwd("/project/pi_brook_moyers_umb_edu/lupine/")
 # Load required libraries
 library(adegenet)
 library(vcfR)
-library(dplyr)
-library(ggplot2)
+library(tidyverse)
+library(cowplot)
 
-#### Process VCF for visualization
-lpvcf <- read.vcfR("3.pca/noOut.snps.vcf")
+#### PCA for Northeast Sites
+nevcf <- read.vcfR("2.stacks/neFiltered.vcf")
 
-# Make a popfile (note this is edited beforehand to not include BW1-2)
-#popList <- as.data.frame(read.delim("2.stacks/pops", header = FALSE))
-#write.csv(popList, file = "3.pca/noOut.csv")
-pops <- read.csv("3.pca/noOut.csv", header = TRUE) |> select(V1)
+neList <- read.delim(file = "2.stacks/nemap.txt", header = FALSE) |>
+  rename(id = V1,
+         pop = V2)
 
-# Generate a genind file for adegenet
-lupine <- vcfR2genind(lpvcf, pop = pops, return.alleles = TRUE)
+# Convert to genind
+neind <- vcfR2genind(nevcf, pop = neList$pop, return.alleles = TRUE)
 
-# Check for missing data
-sum(is.na(lupine$tab))
-# There are 315984422 NAs (?) I feel like that's wrong because that's basically the whole file
+# Pull out tab
+netab <- tab(neind, freq=TRUE, NA.method = "mean")
 
-# Replace NAs with mean allele frequency
-#lupineMean <- scaleGen(lupine, NA.method = "mean")
-# Check it worked
-#class(lupineMean)
-#dim(lupineMean) # 140 samples, 2799556 rows
-
-# Let PCA handle missing data
-x.lupine <- tab(lupine, freq=TRUE, NA.method = "mean")
-write.table(x.lupine, file = "3.pca/meanNoOutLupine.genind")
-
-#### Calculate PCA
-lupinePCA1 <- dudi.pca(x.lupine,
+# Calculate PCA
+nePCA <- dudi.pca(netab,
                        center = TRUE, scale = TRUE,
                        scannf = FALSE, nf = 200)
-# Find clusters
-#clust <- find.clusters(lupine, max.n.clust=20)
 
-# Calculate DAPC
-#dapc1 <- dapc(lupine, clust$grp)
-
-# Save eigenvectors and values
-vec <- lupinePCA1$li
-val <- lupinePCA1$eig
-write.table(x= vec, file = "3.pca/noOutEvecs.ssv")
-write.table(x = val, file = "3.pca/noOutEvals.ssv")
+vec <- nePCA$li
+val <- nePCA$eig
+write.table(x= vec, file = "3.pca/neEvecs.ssv")
+write.table(x = val, file = "3.pca/neEvals.ssv")
 
 # Calculate explained variance
-var <- 100*lupinePCA1$eig/sum(lupinePCA1$eig)
+var <- data.frame(Axis = 1:77,
+                  Variance = 100*val/sum(val))
 
 head(var) # Taking out that crazy outlier might help this!
 write.table(var, file = "axisVariance.ssv")
 
-# Also I'm not exactly mad given how much data there is here
-lupinePCA1$eig[1]
+# Make a bar chart of the variance explained
+varplot <- ggplot(data = var,
+       mapping = aes(x = Axis, y = Variance)) +
+  geom_col() +
+  theme_classic() +
+  labs(y = "% Variance Explained")
 
-#### Visualize
-#s.label(lupinePCA1$li)
-#lPCA <- s.class(lupinePCA1$li, fac = pop(lupine), col=funky(17))
-# The integrated functions for viz don't work, so we'll make our own with the eigenvectors
+# Plot the PCA eigenvectors
+vec <- vec |>
+  mutate(region = substr(rownames(vec), 24, 25),
+         region = str_replace_all(region, c("92"="Seed Bank", "AB"="NH", "AL"="NY", "CL"="VT", "CN"="NH", "HK"="NH", "MO"="MA", "SA"="NY")))
+vec$region[1:6] <- "VT"
+vec$region[7:8] <- "NH"
 
-save(lupinePCA1, file = "3.pca/noOutPCA1.R")
+
+palMap <- c("#E2A3C7", "#778da9", "#EC7D10", "#63A46C")
+
+nepca <- ggplot(data = vec,
+       mapping = aes(x = -Axis1, y = Axis2, color = region)) +
+  geom_point(size = 2) +
+  theme_classic(base_size = 16) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(x = "Axis 1 (5.34%)",
+    y = "Axis 2 (4.41%)") +
+  scale_color_manual(values = palMap, name = "State")
+
+jpeg(filename = "3.pca/nepca.jpg", height = 6, width = 7, units = "in", res = 300)
+nepca
+dev.off()
