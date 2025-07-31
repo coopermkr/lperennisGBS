@@ -40,7 +40,7 @@ var <- data.frame(Axis = 1:77,
                   Variance = 100*val/sum(val))
 
 head(var) # Taking out that crazy outlier might help this!
-write.table(var, file = "axisVariance.ssv")
+write.table(var, file = "3.pca/axisVariance.ssv")
 
 # Make a bar chart of the variance explained
 varplot <- ggplot(data = var,
