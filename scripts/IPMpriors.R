@@ -17,7 +17,7 @@ library(broom)
 lms <- read_csv("5.ipm/LMS_master.csv") |>
   # Calculate size and fix object types
   mutate(size = clump_length*clump_width*mean_stem_height,
-         reproductive = total_flowering_stems > 0,
+         reproductive = as.numeric(total_flowering_stems > 0),
          total_stems = as.numeric(total_stems),
          total_flowering_stems = as.numeric(total_flowering_stems)) |>
   # Fix incomplete data
@@ -59,7 +59,7 @@ repro_log <- brm(data = lms,
                               nl = TRUE),
              
                  # Set priors from Ramula
-                 prior = c(prior(logit(0.04, 0.024), nlpar = lgsize)),
+                 prior = c(prior(normal(0.04, 0.024), nlpar = lgsize)),
                        #set_prior("normal(1.76, 0.106)", class = "intercept")),
                  iter = 2000, warmup = 1000, cores = 4, chains = 4, seed = 11)
 
@@ -67,7 +67,7 @@ saveRDS(repro_log, file = "5.IPM/repro_log.rds")
 
 # Check model
 plot(repro_log)
-pp_check(repro_log)
+pp_check(repro_log) # Good fit
 brms::rhat(repro_log) |> mcmc_rhat() # At one-- convergence
 
 # Fit with quadratic
@@ -78,37 +78,29 @@ repro_quad <- brm(data = lms,
                               nl = TRUE),
                  
                  # Set priors from Ramula
-                 prior = c(prior(logit(0.04, 0.024), nlpar = lgsize)),
+                 prior = c(prior(normal(0.04, 0.024), nlpar = lgsize)),
                  #set_prior("normal(1.76, 0.106)", class = "intercept")),
-                 iter = 2000, warmup = 1000, cores = 4, chains = 4, seed = 11)
+                 iter = 50000, warmup = 2000, cores = 4, chains = 6, seed = 1989)
+# No convergence after 50k iterations!
 
-saveRDS(repro_quad, file = "5.IPM/repro_log.quad")
-
-# Check model
-plot(repro_quad)
-pp_check(repro_quad)
-brms::rhat(repro_quad) |> mcmc_rhat() # At one-- convergence
-
-# Compare Models
-reloo_log <- loo(repro_log)
-reloo_quad <- loo(repro_quad)
-reloo_compare(loo_log, loo_quad)
-
-# Assess model
+# Assess winning model
 summary(repro_log)
 fixef(repro_log)
 
 ### Flowering Stems ~ Size
-flstems_log <- brm(data = lms,
-             family = poisson,
-             formula = bf(total_flowering_stems ~ lgsize,
-                          lgsize ~ 0 + log(size),
-                          nl = TRUE),
+# First filter out non-reproductive plants (we just modeled them above)
+flstems_log <- lms |>
+  filter(reproductive == TRUE) |>
+  brm(data = lms,
+      family = poisson,
+      formula = bf(total_flowering_stems ~ lgsize,
+                  lgsize ~ 0 + log(size),
+                  nl = TRUE),
              
-             # Set priors from Ramula
-             prior = c(prior(normal(0.32, 0.005), nlpar = lgsize)),
-             #set_prior("normal(1.76, 0.106)", class = "intercept")),
-             iter = 2000, warmup = 1000, cores = 4, chains = 4, seed = 11)
+      # Set priors from Ramula
+      prior = c(prior(normal(0.32, 0.005), nlpar = lgsize)),
+      #set_prior("normal(1.76, 0.106)", class = "intercept")),
+      iter = 2000, warmup = 1000, cores = 4, chains = 4, seed = 11)
 
 saveRDS(flstems_log, file = "5.IPM/flstems_log.rds")
 
@@ -117,27 +109,28 @@ pp_check(flstems_log) # Not a great fit, maybe quadratic?
 brms::rhat(flstems_log) |> mcmc_rhat() # At one-- convergence
 
 # Try with a quadratic term
-flstems_quad <- brm(data = lms,
-               family = poisson,
-               formula = bf(total_flowering_stems ~ lgsize + lgsize^2,
-                            lgsize ~ 0 + log(size),
-                            nl = TRUE),
+flstems_quad <- lms |>
+  filter(reproductive == TRUE) |>
+  brm(family = poisson,
+      formula = bf(total_flowering_stems ~ lgsize + lgsize^2,
+                   lgsize ~ 0 + log(size),
+                   nl = TRUE),
                
-               # Set priors from Ramula
-               prior = c(prior(normal(0.32, 0.005), nlpar = lgsize)),
-               #set_prior("normal(1.76, 0.106)", class = "intercept")),
-               iter = 6000, warmup = 1000, cores = 4, chains = 4, seed = 1989)
+      # Set priors from Ramula
+      prior = c(prior(normal(0.32, 0.005), nlpar = lgsize)),
+      iter = 6000, warmup = 1000, cores = 4, chains = 4, seed = 1989) #Didn't converge, added iterations
 
 saveRDS(flstems_quad, file = "5.IPM/flstems_quad.rds")
 
 # Check model
-plot(flstems_quad)
-pp_check(flstems_quad) # Still bad... Maybe a random effect?
+plot(flstems_quad) # Good mixing
+pp_check(flstems_quad) # Much better!
 brms::rhat(flstems_quad) |> mcmc_rhat() # At one-- convergence
 
 # Compare models
 flloo_log <- loo(flstems_log)
 flloo_quad <- loo(flstems_quad) # Winner!
-loo_compare(flloo_log, flloo_quad)
 
-
+# Assess winning model
+summary(flstems_quad)
+fixef(flstems_quad)
