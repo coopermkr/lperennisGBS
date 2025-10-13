@@ -30,6 +30,25 @@ vtind <- vcfR2genind(nevcf[,c("FORMAT",vtList$id)])
 # Average missing data for full set
 vttab <- tab(vtind, freq = TRUE, NA.method = "mean")
 
+# Load full population file and subset to Albany population
+alList <- read.delim(file = "2.stacks/nemap.txt", header = FALSE) |>
+  rename(id = V1,
+         pop = V2) |>
+  filter(id %in% colnames(nevcf@gt),
+         pop == "92-CL")
+
+# Subset VCF to only Vermont 1992 samples and convert to genind
+alInd <- vcfR2genind(nevcf[,c("FORMAT",alList$id)])
+
+# Average missing data for full set
+altab <- tab(alInd, freq = TRUE, NA.method = "mean")
+
+# Filter both tab files to only contain the same loci
+common <- intersect(colnames(vttab), colnames(altab))
+
+# Subset the original VT loci to only include those in the AL set
+vttab <- vttab[,common]
+
 # Load full population file and subset to Vermont 1992 population
 vt92List <- read.delim(file = "2.stacks/nemap.txt", header = FALSE) |>
   rename(id = V1,
@@ -44,10 +63,13 @@ vt92ind <- vcfR2genind(nevcf[,c("FORMAT",vt92List$id)])
 vt92tab <- tab(vt92ind, freq = TRUE, NA.method = "mean")
 
 # Filter both tab files to only contain the same loci
-common <- intersect(colnames(vttab), colnames(vt92tab))
+vtcommon <- intersect(colnames(vttab), colnames(vt92tab))
 
-vttab <- vttab[,common]
-vt92tab <- vt92tab[,common]
+# Now subset all three so they share only the same loci
+vttab <- vttab[,vtcommon]
+vt92tab <- vt92tab[,vtcommon]
+altab <- altab[,common]
+# There are 3738 loci between all three populations
 
 #### Predict 100 year diversity in Vermont Population
 
@@ -93,7 +115,7 @@ tr_in <- af(vt92tab) # List of 92-CL allele frequencies
 ntran <- 24 # Number of transplants
 ytran <- 4 # Year of augmentation
 
-vtTrans <- effect_sim(pop = vttab, syears = 1:years, n = nind, n_rep = reps, 
+vt92Trans <- effect_sim(pop = vttab, syears = 1:years, n = nind, n_rep = reps, 
                       growth_model = gm, growth_rate = gr, norm = "norm",
                       nvar = nvar, burnin = burn, noff = noff,
                       mrr = reprorate, frr = reprorate, msr = surrate, fsr = surrate,
@@ -101,10 +123,10 @@ vtTrans <- effect_sim(pop = vttab, syears = 1:years, n = nind, n_rep = reps,
                       trans = tr_in, tsim = F, tsr = tsr, tyears = ytran, ntrans = ntran,
                       trans_year = yeffect, trr = trr)
 
-save(vtTrans, file = "4.translocation/vtTrans.Rdata")
+save(vt92Trans, file = "4.translocation/vt92Trans.Rdata")
 
 # Add random bad years with translocation
-vtTransBad <- effect_sim(pop = vttab, syears = 1:years, n = nind, n_rep = reps, 
+vt92TransBad <- effect_sim(pop = vttab, syears = 1:years, n = nind, n_rep = reps, 
                          growth_model = gm, growth_rate = gr, norm = "norm",
                          nvar = nvar, burnin = burn, noff = noff,
                          mrr = reprorate, frr = reprorate, msr = surrate, fsr = surrate,
@@ -114,7 +136,33 @@ vtTransBad <- effect_sim(pop = vttab, syears = 1:years, n = nind, n_rep = reps,
                          # Add bad year parameters
                          cyears = bad_years, cat_prop = bad_prop)
 
-save(vtTransBad, file = "4.translocation/vtTransBad.Rdata")
+save(vt92TransBad, file = "4.translocation/vt92TransBad.Rdata")
+
+## Reset transplant source to Albany, keep all other params the same
+# Set transplant parameters
+tr_in <- af(altab) # List of 92-CL allele frequencies
+vtalTrans <- effect_sim(pop = vttab, syears = 1:years, n = nind, n_rep = reps, 
+                      growth_model = gm, growth_rate = gr, norm = "norm",
+                      nvar = nvar, burnin = burn, noff = noff,
+                      mrr = reprorate, frr = reprorate, msr = surrate, fsr = surrate,
+                      # Add translocation parameters
+                      trans = tr_in, tsim = F, tsr = tsr, tyears = ytran, ntrans = ntran,
+                      trans_year = yeffect, trr = trr)
+
+save(vtalTrans, file = "4.translocation/vtalTrans.Rdata")
+
+# Add random bad years with translocation
+vtalTransBad <- effect_sim(pop = vttab, syears = 1:years, n = nind, n_rep = reps, 
+                         growth_model = gm, growth_rate = gr, norm = "norm",
+                         nvar = nvar, burnin = burn, noff = noff,
+                         mrr = reprorate, frr = reprorate, msr = surrate, fsr = surrate,
+                         # Add translocation parameters
+                         trans = tr_in, tsim = F, tsr = tsr, tyears = ytran, ntrans = ntran,
+                         trans_year = yeffect, trr = trr,
+                         # Add bad year parameters
+                         cyears = bad_years, cat_prop = bad_prop)
+
+save(vtalTransBad, file = "4.translocation/vtalTransBad.Rdata")
 
 # Calculate population descriptions
 summarize_n(vtTransBad)

@@ -110,20 +110,26 @@ necalcs <- function(simname) {
 # Load in simulations
 load("4.translocation/vtDrift.RData")
 load("4.translocation/vtBad.RData")
-load("4.translocation/vtTrans.RData")
-load("4.translocation/vtTransBad.RData")
+load("4.translocation/vt92Trans.RData")
+load("4.translocation/vt92TransBad.RData")
+load("4.translocation/vtalTrans.RData")
+load("4.translocation/vtalTransBad.RData")
 
 # Run the function on each loaded simulation
 necalcs(vtDrift)
 necalcs(vtBad)
-necalcs(vtTrans)
-necalcs(vtTransBad)
+necalcs(vt92Trans)
+necalcs(vt92TransBad)
+necalcs(vtalTrans)
+necalcs(vtalTransBad)
 
 # Plot each simulation together
-simpal <- c("darkgrey", "#D64550", "#4F9DDE", "#B07CCC")
+simpal <- c("darkgrey", "black",  "#63A46C", "darkgreen", "#EC7D10", "#925000")
 
 neplot <- ne |>
-  mutate(sim = factor(sim, levels = c("vtDrift", "vtBad", "vtTrans", "vtTransBad")),
+  mutate(sim = factor(sim, levels = c("vtDrift", "vtBad", 
+                                      "vt92Trans", "vt92TransBad", 
+                                      "vtalTrans", "vtalTransBad")),
          dvp = mean_vp - 44) |>
   ggplot(mapping = aes(x = year, y = dvp, color = sim, shape = sim)) +
   geom_point() +
@@ -134,13 +140,23 @@ neplot <- ne |>
   scale_color_manual(name = "Simulation", 
                      labels = c("No Action",
                                 "No Action/Periodic Catastrophe",
-                                "Translocation",
-                                "Translocation/Periodic Catastrophe"),
+                                "Seed Bank Augmentation",
+                                "Seed Bank Augmentation/Periodic Catastrophe",
+                                "Albany Augmentation",
+                                "Albany Augmentation/Periodic Catastrophe"),
                      values = simpal) +
+  scale_shape_manual(name = "Simulation",
+                     labels = c("No Action",
+                                "No Action/Periodic Catastrophe",
+                                "Seed Bank Augmentation",
+                                "Seed Bank Augmentation/Periodic Catastrophe",
+                                "Albany Augmentation",
+                                "Albany Augmentation/Periodic Catastrophe"),
+                     values = c(18, 18, 17, 17, 20, 20)) +
   geom_vline(xintercept = 4, linetype = 2) +
   guides(shape = "none") +
          #color = guide_legend(nrow = 2)) +
-  theme(legend.position.inside = c(0.35, 0.9),
+  theme(legend.position.inside = c(0.35, 0.88),
         legend.position = "inside",
         legend.title = element_blank())
 
