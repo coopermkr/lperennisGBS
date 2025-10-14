@@ -1,6 +1,6 @@
 #'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 #'
-#' L. perennis IPM Modeling
+#' L. perennis IPM Priors
 #' @date 2025-10-13
 #' @author Cooper Kimball-Rhines
 #' 
@@ -64,6 +64,8 @@ repro_log <- brm(data = lms,
                  iter = 2000, warmup = 1000, cores = 4, chains = 4, seed = 11)
 
 saveRDS(repro_log, file = "5.IPM/repro_log.rds")
+repro_log <- readRDS("5.IPM/repro_log.rds")
+
 
 # Check model
 plot(repro_log)
@@ -121,6 +123,7 @@ flstems_quad <- lms |>
       iter = 6000, warmup = 1000, cores = 4, chains = 4, seed = 1989) #Didn't converge, added iterations
 
 saveRDS(flstems_quad, file = "5.IPM/flstems_quad.rds")
+flstems_quad <- readRDS("5.IPM/flstems_quad.rds")
 
 # Check model
 plot(flstems_quad) # Good mixing
@@ -134,3 +137,19 @@ flloo_quad <- loo(flstems_quad) # Winner!
 # Assess winning model
 summary(flstems_quad)
 fixef(flstems_quad)
+
+## Reproduction of minimum size
+smallest <- lms |>
+  filter(reproductive == TRUE) |>
+  arrange(size) |>
+  slice_head(prop = 0.05) # Take smallest 5% of reproductive individuals
+
+smallest |>
+  ggplot(mapping = aes(x = size, y = total_flowering_stems)) +
+  geom_point()
+
+smallest |>
+  summarize(msize = mean(size),
+            mflowers = mean(total_flowering_stems),
+            sdflowers = sd(total_flowering_stems))
+
