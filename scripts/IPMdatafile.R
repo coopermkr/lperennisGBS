@@ -42,3 +42,48 @@ dat <- rbind(params, pop, censusFilt)
 
 write.table(dat, file = "5.ipm/LPinvipmADMB.dat", row.names = FALSE, col.names = FALSE)
 # Remove the NAs in the first four rows after this has saved just in case
+
+filt <- census |>
+  filter(Year == 2023)
+
+#### LMS-Generated Data File
+lms <- read_csv("data/LMS_master.csv") |>
+  mutate(Size = clump_length*clump_width*mean_stem_height,
+         Year = as.numeric(year) - min(as.numeric(year)),
+         Size = as.numeric(Size)) |>
+  filter(!is.na(Size),
+         Size > 0) |>
+  mutate(Size = log(Size)) |>
+  filter(quadrat_ID %in% c("NORTH1-1", "NORTH1-2", "NORTH3.4-0", "NORTH3.4-2",
+                           "SOUTHEAST6-2", "CENTER2.3-1", "CENTER2.3-2", "CENTER2.3-3",
+                           "CENTER2.3-4", "CENTER2.3-5", "CENTER2.3-7", "CENTER2.3-8"))
+
+lms |>
+  filter(Size < 7) |>
+  ggplot(mapping = aes(x = Size, y = total_flowering_stems)) +
+  geom_point()
+
+# Calculate per year sample sizes and populations
+pop <- lms |>
+  group_by(Year) |>
+  count() |>
+  rename(Size = n)
+
+# Make parameter table
+params <- tibble(Year = c(4,    # Time series length
+                          162,  # Maximum per-year sample size
+                          200,   # Binning size
+                          6),   # Size of smallest reproductive individual
+                 Size = NA)
+
+# Format individual data
+lmsFilt <- lms |> select(Year, Size)
+
+# Create data file
+dat <- rbind(params, pop, lmsFilt)
+
+write.table(dat, file = "5.ipm/LPinvipmADMB.dat", row.names = FALSE, col.names = FALSE)
+# Remove the NAs in the first four rows after this has saved just in case
+# Go back and figure out which quadrats to keep and which to toss
+
+# Go back in and manually log scale sizes and adjust size of smallest repro individual accordingly

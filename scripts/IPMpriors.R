@@ -14,16 +14,16 @@ library(broom)
 
 
 # Read LMS master datasheet
-lms <- read_csv("5.ipm/LMS_master.csv") |>
+lms <- read_csv("data/LMS_master.csv") |>
   # Calculate size and fix object types
-  mutate(size = clump_length*clump_width*mean_stem_height,
+  mutate(size = max(clump_length, clump_width)*mean_stem_height,
          reproductive = as.numeric(total_flowering_stems > 0),
          total_stems = as.numeric(total_stems),
          total_flowering_stems = as.numeric(total_flowering_stems)) |>
   # Fix incomplete data
   filter(size > 0,
          !is.na(total_flowering_stems))
-  
+
 # Chart size against reproductive variables
 ggplot(data = lms, mapping = aes(x = size, y = total_flowering_stems)) +
   geom_point()
@@ -83,7 +83,8 @@ repro_quad <- brm(data = lms,
                  prior = c(prior(normal(0.04, 0.024), nlpar = lgsize)),
                  #set_prior("normal(1.76, 0.106)", class = "intercept")),
                  iter = 50000, warmup = 2000, cores = 4, chains = 6, seed = 1989)
-# No convergence after 50k iterations!
+
+plot(repro_quad) # No convergence after 50k iterations!
 
 # Assess winning model
 summary(repro_log)
@@ -127,7 +128,7 @@ flstems_quad <- readRDS("5.IPM/flstems_quad.rds")
 
 # Check model
 plot(flstems_quad) # Good mixing
-pp_check(flstems_quad) # Much better!
+pp_check(flstems_quad) # Better!
 brms::rhat(flstems_quad) |> mcmc_rhat() # At one-- convergence
 
 # Compare models

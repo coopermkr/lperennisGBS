@@ -19,6 +19,8 @@ library(dream)
 library(R2admb)
 library(Rcpp)
 
+setwd("/work/pi_brook_moyers_umb_edu/lupine")
+
 ## Set working directory (where INPUT is located)
 # setwd("...") 
 
@@ -62,10 +64,8 @@ n.t <- data[1, 1]  # time series length
 n.x <- data[2, 1]  # maximum per-year sample size (note that zeros are imputed in order to have an n.x x n.t matrix)
 n.i <- data[3, 1]  # binning size
 x.minf <- data[4, 1]  # size of smallest reproductive individual
-#t <- as.vector(data[seq(4+1, 4+n.t, 1), 1])  # observed times in the time series
-#d.t <- as.vector(data[seq(4+1, 4+n.t, 1), 2])  # population sizes at each observed time
-t <- as.vector(c(0, 7, 10))
-d.t <- as.vector(c(178348, 79796, 36311))
+t <- as.vector(data[seq(4+1, 4+n.t, 1), 1])  # observed times in the time series
+d.t <- as.vector(data[seq(4+1, 4+n.t, 1), 2])  # population sizes at each observed time
 D <- cbind(t, d.t)
 X <- cbind(data[seq(5+n.t, dim(data)[1], 1), 1], 
   data[seq(5+n.t, dim(data)[1], 1), 2])  # individual measurements at each time
@@ -94,9 +94,6 @@ for(i in 1:length(t)) {
     x.t[1:length(sub), i] <- sub
     freq.i.t[, i] <- hist(x.t[1:length(sub), i], breaks = z.i, plot = F)$counts    
 }
-
-x.t <- x.t[,1:3]
-freq.i.t <- freq.i.t[,1:3]
 
 ## Transforming the invipmDREAM.cpp C code into an R function
 sourceCpp("5.ipm/LPinvipmDREAM.cpp")
@@ -131,18 +128,21 @@ if (length(fixed) > 0) {
 }
 par <- results.dream$X[which(results.dream$X[, n.p.f + 1] == 
   max(results.dream$X[, n.p.f + 1])),1:n.p.f]
-write.table(par, "5.ipm/invipmADMB.pin", row.names = F, col.names = F)	
+write.table(par, "5.ipm/LPinvipmADMB.pin", row.names = F, col.names = F)	
+
+par <- read.table("5.ipm/LPinvipmADMB.pin", col.names = F)
 
 ## Run the gradient-based part of the algorithm (ADMB)
 # admb must be installed in your computer
-setup_admb("/Applications/ADMBTerminal.app/admb")  # location of the admb software
-compile_admb("invipmADMB", verbose = T)
-run_admb("invipmADMB", verbose = T)
+setup_admb("C:/Users/coope/OneDrive/Desktop/PineBarrens/RAD-Seq/lperennisGBS/5.ipm/ADMB-13.2")  # location of the admb software
+compile_admb("5.ipm/LPinvipmADMB", verbose = T)
+run_admb("5.ipm/LPinvipmADMB", verbose = T, profile = T, mcmc = T,
+         mcmc.opts = mcmc.control(mcmcpars = "S1"))
 # run with option profile = T to run likelihood profiling
 # run with option mcmc = T to run mcmc
 
 ## Reading and printing output
-output <- read_admb("invipmADMB")
+output <- read_admb("5.ipm/LPinvipmADMB")
 estimates <- output$coefficients
 thresholds <- (hyper.max - hyper.min)/1000
 for (i in 1:n.p)
