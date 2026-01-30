@@ -1,7 +1,7 @@
 #'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 #'
-#' L. perennis Mixed Model Simulation
-#' @date 2025-10-24
+#' L. perennis Census Mixed Model NHFG
+#' @date 2026-01-20
 #' @author Cooper Kimball-Rhines
 #' 
 #'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -13,15 +13,17 @@ library(broom.mixed)
 library(performance)
 library(modelbased)
 
+### Transects have minimal width, only intercepting clumps are counted.
+
 #### Load data ####
 census <- read_csv("data/Combined_Lupine_Sheets.csv") |>
   # Calculate log scaled sizes
-  mutate(Size = Length*Width) |>
-  filter(!is.na(Size)) %>%
+  mutate(Ellipse = Length*Width*pi/4) |>
+  filter(!is.na(Ellipse)) %>%
   replace(is.na(.), 0)
 
 # Chart size distribution by year
-ggplot(census, mapping = aes(x = Size)) +
+ggplot(census, mapping = aes(x = Ellipse)) +
   geom_histogram() +
   facet_wrap(vars(Year)) # For validation: 2010/2011, 2017/2018, and 2023/2024 need to be combined
 
@@ -43,35 +45,40 @@ census |>
 
 sum(census$Flowers == 0)/nrow(census)
 
-# Calculate BaseLine observations
+#### Calculate BaseLine observations ####
 cenSum <- census |>
   group_by(BaseLine, Year) |>
-  summarize(cov = sum(Size),
+  summarize(cov = sum(Ellipse),
             count = n(),
             nflowers = sum(Flowers))
 
-#cenSum |>
-#  filter(Year == 2008) |>
-#  write_csv(file = "ratios.csv")
+# Metadata from 2001 lupine transect establishment datasheet
+meta <- read_csv(file = "data/censusMeta.csv") |>
+  mutate(AREA_SURVEYED = NTRANSECTS*TRANSECT_LENGTH) |>
+  rename(BaseLine = SITE)
 
-# Metadata
-meta <- read_csv(file = "data/censusMeta.csv")
-
+# Merge coverage data with metadata
 basePop <- merge(cenSum, meta) |>
-  mutate(dens = cov/(`Area(ha)`*1000000),
-         popSize = count*54)
+  mutate(countSurveyed = count/AREA_SURVEYED,
+         covSurveyed = cov/AREA_SURVEYED,
+         totalArea = BASELINE_LENGTH*TRANSECT_LENGTH,
+         countTotal = count/totalArea,
+         covTotal = cov/totalArea) |>
+  select(BaseLine, Year, countSurveyed, covSurveyed, countTotal, covTotal, totalArea,
+         cov, count, nflowers, AREA_SURVEYED)
 
 
-# Model population size as a function of continuous Year and RE for baseline
+#### Model population density as a function of continuous Year and RE for baseline ####
+# We know lupine is affected by density dependent reproduction rates so let's start here
 censusMixed <- lmer(data = basePop,
-                    formula = popSize ~ Year + (1|BaseLine))
+                    formula = covSurveyed ~ Year + (1|BaseLine))
 
 check_model(censusMixed) # Model fits well
 
 # Assess coefficients
-tidy(censusMixed) # Steady population decline of ~ 500 individuals per subpop per year
+tidy(censusMixed) # Steady population density decline of ~ 1.63cm^2/m of baseline per year
 summary(censusMixed)
-confint(censusMixed) # Population decline is significant negative
+confint(censusMixed) # Population density decline is not significantly negative
 estimate_relation(censusMixed) |> plot() # Visualize year fixed effect
 
 #Visualize random effects
@@ -89,127 +96,73 @@ estimate_relation(censusMixed,
             linewidth = 2) +
   theme_classic()
 
-#### Ne Simulation ####
-# Now write a function to simulate allele draws based on a steady stochastic 
-# negative population decline from 2024
+#### Model population count density as a function of continuous Year and RE for baseline ####
+# This should theoretically give the same result as a glm with dens ~ Year + AREA_SURVEYED
+# And probably a similar result to count ~ Year + (1|BaseLine)
+countsDensMixed <- lmer(data = basePop,
+                     formula = countSurveyed ~ Year + (1|BaseLine))
 
-# Function 1:
-# Set start parameters (pop size, pop change, fecundity estimates)
-# Randomly draw from poisson distribution for new offspring population-wide (Nf)
-# Calculate new total population size (N1) and number of number of previous generation survivors (Ns)
-# Report Ns, Nf, N1
+check_model(countsDensMixed) # Model fits well
 
-basePop |> filter(Year == 2023) |> summarize(N = sum(popSize))
+# Assess coefficients
+tidy(countsDensMixed) # Population decline of ~ 0.004 individuals/m of baseline per year
+summary(countsDensMixed)
+confint(countsDensMixed) # Population decline is significantly negative
+estimate_relation(countsDensMixed) |> plot() # Visualize year fixed effect
 
-N0 <- 26946 # Starting population size
-dN <- -547*7 # Mean change in population size per year
-ysd <- 2
-offLambda <- 8*35 # Mean seeds produced per individual (# flowers * seeds)
+#Visualize random effects
+estimate_relation(countsDensMixed,
+                  include_random = TRUE) |> plot()
 
-## Calculate new population sizes
-popSizes <- tibble(year = 1:1000,
-                   N = numeric(1000))
+#Show the marginal (fixed effect) curve on top of the random effects
+estimate_relation(countsDensMixed,
+                  include_random = TRUE) |>
+  plot(ribbon = list(alpha = 0)) +
+  geom_line(data = estimate_relation(countsDensMixed),
+            mapping = aes(x = Year,
+                          y = Predicted),
+            color = "black",
+            linewidth = 2) +
+  theme_classic()
 
-# Set initial population size
-popSizes$N[1] <- 26946
+#### Overall Population Size Trend ####
+# Estimate total population size each year-- this involves combining subpops so no error bars
+# Though using the previous numbers you could calculate a percent variation and scale it up to this level
+censusMetrics <- basePop |>
+  group_by(Year) |>
+  summarize(countDensity = average(countSurveyed),
+            countSD = sd(countSurveyed)
+            censusFlowers = sum(nflowers),
+            censusArea = sum(totalArea),
+            censusCoverage = sum(cov)) |> # Summarize transects to the area of subpopulation
+  mutate(countDensity = censusCount/censusArea, # Calculate overall 
+         popSize = countDensity*)
 
-# Write a function that will iterate the population draw for 100 years
-censusSize <- function(iter) {
-  for (i in 1:999) {
-    popSizes$N[i+1] <- max(0, (popSizes$N[i] + rnorm(1, mean = -382, sd = 2)))
-  }
-  popSizes |> mutate(iteration = iter) # Assign iteration group
-}
+popSizeMixed <- lmer(data = basePop,
+                     formula = dens ~ Year + (1|BaseLine))
 
-# Run iterations
-censusIterated <- map_dfr(.x = 1:5, .f = censusSize)
+check_model(countsDensMixed) # Model fits well
 
-# Now write a function that calculates the number of surviving and flowering individuals in that population
-censusSim <- function(iter) {
-  iterSmall <<- censusIterated |> 
-    filter(iteration == iter) |>
-    mutate(Nf = 0,
-           Ns = 0)
-  
-  for (i in 1:(nrow(iterSmall)-1)) {
-    
-    # Number of flowering individuals
-    pflower <- rbinom(n = iterSmall$N[i], size = 1, prob = 0.3) |> sum()
-  
-    # Of the flowering individuals, randomly draw the number of offspring and multiply by multi-year establishment rate
-    iterSmall$Nf[i] <- rpois(pflower, 280) |>
-      sum()*.001
-  
-  
-    # Calculate number of survivors
-    iterSmall$Ns[i] <- max(0, round(max(0,iterSmall$N[i+1])) - round(max(0,iterSmall$Nf[i])))
-  }
-  return(iterSmall)
-}
+# Assess coefficients
+tidy(countsDensMixed) # Population decline of ~ 0.004 individuals/m of baseline per year
+summary(countsDensMixed)
+confint(countsDensMixed) # Population decline is significantly negative
+estimate_relation(countsDensMixed) |> plot() # Visualize year fixed effect
 
-# Iterate
-censusSimulated <- map_dfr(.x = unique(censusIterated$iteration), .f = censusSim)
+#Visualize random effects
+estimate_relation(countsDensMixed,
+                  include_random = TRUE) |> plot()
 
-
-# Function 2:
-# Iterate over outputs from function 1
-# Load in allele frequencies
-# Perform binomial draws of size Nf for each allele
-# Calculate new weighted allele frequencies: (p * Ns + p' * Nf)/N'
-# Calculate Ne' using time step method
-# Report Ne'
-# Initialize population with age 0 cohort
-alleles <- read_tsv("6.translocation/concord.frq") |>
-  filter(N_ALLELES == 2) |>
-  rename(frequencies = `{ALLELE:FREQ}`)
-
-p0 <- str_split_i(alleles$frequencies, pattern = '\t', 1) |>
-  str_split_i(pattern = ":", 2) |>
-  str_split_i(pattern = '"', 1) |>
-  as.numeric()
-
-pn <- rbinom(Nf*2, 1, p)
-
-# Store frequency history
-freq_history <- NULL
-
-# Simulation loop
-NeSim <- function(iter) {
-  
-  subIterated <- censusIterated |>
-    filter(iteration == iter)
-  
-  for (i in 1:nrow(subIterated)) {
-    pn <- rbinom(subIterated$Nf[i]*2, 1, p)
-  }
-}
-
-for (t in 1:generations) {
-  
-  # Binomial draw for offspring
-  num_offspring <- N * (1 - survival_rate) # Assuming constant population size
-  offspring_alleles <- rbinom(num_offspring * 2, 1, p_parental)
-  
-  # Survival of current adults
-  surviving_alleles_indices <- rbinom(N * 2, 1, survival_rate) == 1
-  surviving_alleles <- population_alleles[surviving_alleles_indices]
-  
-  # Form new population
-  population_alleles <- c(surviving_alleles, offspring_alleles)
-  
-  # Update and store frequency
-  new_p <- sum(population_alleles) / length(population_alleles)
-  freq_history <- c(freq_history, new_p)
-  
-  # Optional: Resize population to maintain N, e.g., random sampling
-  # if (length(population_alleles) > N * 2) {
-  #   population_alleles <- sample(population_alleles, N * 2)
-  # }
-}
-
-# Things to consider adding to the function:
-# Seed bank penalty dynamic (x% of N-1, N-2, N-3, N-4, and N-5 genes establish with their corresponding p)
-# Mutation
+#Show the marginal (fixed effect) curve on top of the random effects
+estimate_relation(countsDensMixed,
+                  include_random = TRUE) |>
+  plot(ribbon = list(alpha = 0)) +
+  geom_line(data = estimate_relation(countsDensMixed),
+            mapping = aes(x = Year,
+                          y = Predicted),
+            color = "black",
+            linewidth = 2) +
+  theme_classic()
 
 
 

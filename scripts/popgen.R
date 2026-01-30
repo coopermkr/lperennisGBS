@@ -42,7 +42,7 @@ div <- data.frame(Hs = hierfstat::Hs(lpHier),
 # Calculate mean observed heterozygosities by population
 lpHet <- hierfstat::Ho(lpHier)
 
-write.csv(x = div, file = "3.popgen/neDiversity.csv")
+#write.csv(x = div, file = "3.popgen/neDiversity.csv")
 
 div <- read.csv(file = "3.popgen/neDiversity.csv") |>
   rename(Pop = X)
@@ -76,9 +76,9 @@ lpDivNe <- ggplot(data = div,
                    y = 0.018, yend = 0.15),
                linewidth = 0.1, linetype = "dashed")
 
-png(filename= "3.popgen/lpDivNe.png", width = 900, height = 500)
-lpDivNe
-dev.off()
+#png(filename= "3.popgen/lpDivNe.png", width = 900, height = 500)
+#lpDivNe
+#dev.off()
 
 #### Population Differentiation
 # Fst between populations
@@ -123,7 +123,7 @@ inbred <- data.frame(ll = inbredHier$fis.ci[,,1],
          hl = ll.hl) |>
   mutate(Fis = (ll+hl)/2)
 
-write.csv(inbred, "3.popgen/inbreeding.csv")
+#write.csv(inbred, "3.popgen/inbreeding.csv")
 
 inbred <- read_csv("3.popgen/inbreeding.csv") |>
   select(!...1)
@@ -139,9 +139,9 @@ FisPlot <- ggplot(data = inbred,
   labs(title = "Fis confidence intervals with 1000 bootstraps",
        x = "Population")
 
-png(filename= "FisPlot.png", width = 700, height = 500)
-FisPlot
-dev.off()
+#png(filename= "FisPlot.png", width = 700, height = 500)
+#FisPlot
+#dev.off()
 
 # Just Northeast region Fis with confidence intervals
 inbredRegions <- inbredHier |>
@@ -153,9 +153,9 @@ inbredRegions <- inbredHier |>
   labs(title = "Fis confidence intervals with 1000 bootstraps",
        x = "Population")
 
-png(filename= "FisRegions.png", width = 700, height = 500)
-inbredRegions
-dev.off()
+#png(filename= "FisRegions.png", width = 700, height = 500)
+#inbredRegions
+#dev.off()
 
 # Model population area against Fis
 fisMod <- inbredHier |>
