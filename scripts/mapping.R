@@ -22,7 +22,7 @@ northeast <- st_read("4.IBD/Northeastern_States/Northeast_State_Polygon.shp")
 northeast <- st_transform(northeast, 4326)
 
 northeast <- northeast |>
-  filter(STATE_COD %in% c("NH", "NY", "MA", "VT"))
+  filter(STATE_COD %in% c("NH", "NY", "MA", "VT", "CT", "NJ", "ME", "PA", "RI"))
 
 neMap <- ggplot(data = northeast) +
   geom_sf(color = "darkgrey")
@@ -35,15 +35,21 @@ palMap <- c("#E2A3C7", "#778da9", "#EC7D10", "#63A46C")
 
 
 # Make sample site map
+set.seed(8675309)
 siteMap <- neMap +
   geom_point(data=sites, aes(x=Longitude, y=Latitude, color = State), 
              size=2.5, show.legend = FALSE) +
   geom_label_repel(data=sites, aes(x=Longitude, y=Latitude, label=Population), nudge_y = 0, nudge_x = -0.03) +
-  theme_classic(base_size = 16) +
+  theme_classic(base_size = 20) +
   xlab("Longitude") + ylab("Latitude") +
-  scale_color_manual(values = palMap)
+  scale_color_manual(values = palMap) +
+  coord_sf(xlim = c(-74.5, -70), ylim = c(41, 45.5))
 
 siteMap
+
+jpeg(filename = "4.IBD/neMap.jpg", height = 6, width = 8.5, units = "in", res = 300)
+siteMap
+dev.off()
 
 inbredHier <- read_csv("3.popgen/inbreeding.csv") |>
   mutate(Region = c("Vermont", "New Hampshire", "New Hampshire", "New York",

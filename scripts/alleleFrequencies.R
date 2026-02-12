@@ -109,14 +109,15 @@ NHAL <- rbind(Auburn, Hooksett, Concord, Auburn, Hooksett, Concord, Albany)
 NHAL |> select(major, minor) |>
   write_delim(file = "5.translocation/allelefreqs/NHAL.af", delim = " ", col_names = FALSE)
 
+## All following simulations only need to run the supplemented pops since the solos count for everyone
 # Saratoga supplement
-NHSA <- rbind(Auburn, Hooksett, Concord, Auburn, Hooksett, Concord, Saratoga)
+NHSA <- rbind(Auburn, Hooksett, Concord, Saratoga)
 
 NHSA |> select(major, minor) |>
   write_delim(file = "5.translocation/allelefreqs/NHSA.af", delim = " ", col_names = FALSE)
 
 # Montague supplement
-NHMO <- rbind(Auburn, Hooksett, Concord, Auburn, Hooksett, Concord, Montague)
+NHMO <- rbind(Auburn, Hooksett, Concord, Montague)
 
 NHMO |> select(major, minor) |>
   write_delim(file = "5.translocation/allelefreqs/NHMO.af", delim = " ", col_names = FALSE)

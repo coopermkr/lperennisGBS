@@ -9,16 +9,14 @@
 # Load required libraries
 library(adegenet)
 library(vcfR)
-library(dplyr)
-library(ggplot2)
-library(ggpubr)
+library(tidyverse)
 
 #### Calculate PCA
 # Read in the VCF we just saved
-missvcf <- read.vcfR("2.stacks/lpfiltered.vcf")
+missvcf <- read.vcfR("2.stacks/allPopsFiltered.vcf")
 
 # Prepare population info
-popList <- read.delim(file = "2.stacks/refMap", header = FALSE) |>
+popList <- read.delim(file = "2.stacks/refmap.txt", header = FALSE) |>
   rename(id = V1,
          pop = V2) |>
   filter(id %in% colnames(missvcf@gt))
@@ -37,7 +35,7 @@ eigCoords <- pca.lp$li |>
   cbind(popList) |>
   mutate(region = pop)
 
-write.csv(eigCoords, file = "3.pca/lpEigens.csv")
+#write.csv(eigCoords, file = "3.pca/lpEigens.csv")
 
 
 #### Graph PCA
@@ -61,16 +59,16 @@ palPop <- c("#DC136C","#FFD166", "#F78764", "#63A46C", "#700548",
 lpPops <- ggplot(data = eigCoords, mapping = aes(x = Axis1, y = Axis2, color = pop)) +
   geom_point(size = 2) +
   scale_color_manual(values = palPop) +
-  ggtitle("L. perennis PCA by populations \nwith 46,000 SNPs") +
+  ggtitle("L. perennis PCA by populations \nwith 20,184 SNPs") +
   labs(title = "L. perennis PCA by population \n with 46,000 SNPs",
-       x = "Principal Component 1 (40.8%)",
-       y = "Principal Component 2 (2.43%)") +
+       x = "Principal Component 1 (50.6%)",
+       y = "Principal Component 2 (3.14%)") +
   guides(size = "none") +
   theme_classic()
 
-png(filename= "lpAllPops.png", width = 900, height = 500)
-lpPops
-dev.off()
+#png(filename= "lpAllPops.png", width = 900, height = 500)
+#lpPops
+#dev.off()
 
 # If we want to simplify and graph by our 6 regions:
 eigCoords$region <- gsub("92-CL", "Vermont", x = eigCoords$region)
@@ -85,42 +83,39 @@ eigCoords$region <- gsub("MO", "Massachusetts", x = eigCoords$region)
 eigCoords$region <- gsub("ANF", "Florida", x = eigCoords$region)
 eigCoords$region <- gsub("NK", "Florida", x = eigCoords$region)
 eigCoords$region <- gsub("BW", "Florida", x = eigCoords$region)
-eigCoords$region <- gsub("^C$", "Mid", x = eigCoords$region)
-eigCoords$region <- gsub("^PM$", "Mid", x = eigCoords$region)
-eigCoords$region <- gsub("^F$", "Mid", x = eigCoords$region)
-eigCoords$region <- gsub("^M$", "Mid", x = eigCoords$region)
-eigCoords$region <- gsub("^P$", "Mid", x = eigCoords$region)
+eigCoords$region <- gsub("^C$", "Midwest/Midatlantic", x = eigCoords$region)
+eigCoords$region <- gsub("^PM$", "Midwest/Midatlantic", x = eigCoords$region)
+eigCoords$region <- gsub("^F$", "Midwest/Midatlantic", x = eigCoords$region)
+eigCoords$region <- gsub("^M$", "Midwest/Midatlantic", x = eigCoords$region)
+eigCoords$region <- gsub("^P$", "Midwest/Midatlantic", x = eigCoords$region)
 
-palReg <- c("#C200FB","#E2A3C7", "#DC136C", "#778da9", "#EC7D10", "#63A46C")
+palFl <- c("#C200FB","#E2A3C7", "#DC136C", "#778da9", "#EC7D10", "#63A46C")
 
 lpRegs <- ggplot(data = eigCoords, mapping = aes(x = Axis1, y = Axis2, color = region)) +
   geom_point(size = 3) +
-  scale_color_manual(values = palReg) +
-  labs(title = "L. perennis PCA by region with 46,000 SNPs",
-       x = "Principal Component 1 (40.8%)",
-       y = "Principal Component 2 (2.43%)") +
-  guides(size = "none") +
-  theme_classic(base_size = 16) +
-  stat_ellipse(type = "norm", linetype = 2)
+  scale_color_manual(values = palFl) +
+  labs(subtitle = "PCA of 20,184 SNPs",
+       x = "Principal Component 1 (50.6%)",
+       y = "Principal Component 2 (3.14%)",
+       tag = "(A)") +
+  guides(size = "none", color = guide_legend(title = "Region")) +
+  theme_light(base_size = 16) +
+  stat_ellipse(type = "norm", linetype = 2) +
+  theme(legend.position=c(.725, .81))
 
-png(filename= "lpRegions.png", width = 900, height = 600)
+png(filename= "3.pca/lpRegions.png", width = 6.5, height = 6.5, units = "in", res = 100)
 lpRegs
 dev.off()
 
-
-
-
-lpvcf <- read.vcfR("2.stacks/refMAF/populations.snps.vcf")
-
 #### Without Florida ####
-lpvcf <- read.vcfR("2.stacks/filtered.vcf")
+lpvcf <- read.vcfR("2.stacks/allPopsFiltered.vcf")
 
 # Convert VCF to a genInd object and provide population assignments
 lpInd <- vcfR2genind(lpvcf, pop = popList$pop)
 
 lpInd$pop # We want to keep 1:33, 52:104, 116:136
 
-nofl <- lpInd[c(1:33, 52:104, 116:136),]
+nofl <- lpInd[c(1:33, 51:86, 98:114),]
 
 # check it worked
 nofl$pop
@@ -151,11 +146,11 @@ noflEigs$Region <- gsub("MO", "Massachusetts", x = noflEigs$Region)
 noflEigs$Region <- gsub("ANF", "Florida", x = noflEigs$Region)
 noflEigs$Region <- gsub("NK", "Florida", x = noflEigs$Region)
 noflEigs$Region <- gsub("BW", "Florida", x = noflEigs$Region)
-noflEigs$Region <- gsub("^C$", "Mid", x = noflEigs$Region)
-noflEigs$Region <- gsub("^PM$", "Mid", x = noflEigs$Region)
-noflEigs$Region <- gsub("^F$", "Mid", x = noflEigs$Region)
-noflEigs$Region <- gsub("^M$", "Mid", x = noflEigs$Region)
-noflEigs$Region <- gsub("^P$", "Mid", x = noflEigs$Region)
+noflEigs$Region <- gsub("^C$", "Midwest/Midatlantic", x = noflEigs$Region)
+noflEigs$Region <- gsub("^PM$", "Midwest/Midatlantic", x = noflEigs$Region)
+noflEigs$Region <- gsub("^F$", "Midwest/Midatlantic", x = noflEigs$Region)
+noflEigs$Region <- gsub("^M$", "Midwest/Midatlantic", x = noflEigs$Region)
+noflEigs$Region <- gsub("^P$", "Midwest/Midatlantic", x = noflEigs$Region)
 
 palReg <- c("#E2A3C7", "#DC136C", "#778da9", "#EC7D10", "#63A46C")
 
@@ -163,21 +158,103 @@ palReg <- c("#E2A3C7", "#DC136C", "#778da9", "#EC7D10", "#63A46C")
 noflPCA <- ggplot(data = noflEigs, mapping = aes(x = coords.Axis1, y = coords.Axis2, color = Region)) +
   geom_point(size = 3) +
   scale_color_manual(values = palReg) +
-  labs(title = "L. perennis PCA by region with 46,000 SNPs",
-       x = "Principal Component 1 (7.90%)",
-       y = "Principal Component 2 (6.39%)") +
-  guides(size = "none") +
-  theme_classic(base_size = 16) +
-  stat_ellipse(type = "norm", linetype = 2)
+  labs(subtitle = "PCA of 20,184 SNPs",
+       x = "Principal Component 1 (6.84%)",
+       y = "Principal Component 2 (6.50%)") +
+  guides(size = "none", color = guide_legend(title = "Region")) +
+  theme_light(base_size = 16) +
+  stat_ellipse(type = "norm", linetype = 2) +
+  theme(legend.position=c(.8,.2))
 
-png(filename= "noflPCA.png", width = 900, height = 500)
+png(filename= "3.pca/noflPCA.png", width = 6.5, height = 6.5, units = "in", res = 100)
 noflPCA
 dev.off()
 
 #write.csv(noflEigs, file = "3.pca/noflEigs.csv")
 
+#### Just Northeast SNPs ####
+nevcf <- read.vcfR("2.stacks/neFiltered.vcf")
+
+# Prepare population info
+neList <- read.delim(file = "2.stacks/nemap.txt", header = FALSE) |>
+  rename(id = V1,
+         pop = V2) |>
+  filter(id %in% colnames(nevcf@gt))
+
+# Convert VCF to a genInd object and provide population assignments
+neInd <- vcfR2genind(nevcf, pop = neList$pop)
+
+# Mean missing data
+x.ne <- tab(neInd, freq = TRUE, NA.method = "mean")
+
+# Calculate PCA
+pca.ne <- dudi.pca(x.ne, center = TRUE, scale = FALSE, scannf = FALSE, nf = 80)
+
+eig.perc <- 100*pca.ne$eig/sum(pca.ne$eig)
+
+# Save eigens
+neEigs <- data.frame(coords = pca.ne$li,
+                     pops = neList$pop,
+                     Region = neList$pop,
+                     year = neList$pop)
+
+# If we want to simplify and graph by our 6 regions:
+neEigs$Region <- gsub("92-CL", "Vermont", x = neEigs$Region)
+neEigs$Region <- gsub("CL", "Vermont", x = neEigs$Region)
+neEigs$Region <- gsub("AB", "New Hampshire", x = neEigs$Region)
+neEigs$Region <- gsub("CN", "New Hampshire", x = neEigs$Region)
+neEigs$Region <- gsub("92-HK", "New Hampshire", x = neEigs$Region)
+neEigs$Region <- gsub("HK", "New Hampshire", x = neEigs$Region)
+neEigs$Region <- gsub("SA", "New York", x = neEigs$Region)
+neEigs$Region <- gsub("AL", "New York", x = neEigs$Region)
+neEigs$Region <- gsub("MO", "Massachusetts", x = neEigs$Region)
+
+# And make a column to add shapes for collection years:
+neEigs$year <- gsub("92-CL", "1992", x = neEigs$year)
+neEigs$year <- gsub("CL", "2022", x = neEigs$year)
+neEigs$year <- gsub("AB", "2022", x = neEigs$year)
+neEigs$year <- gsub("CN", "2022", x = neEigs$year)
+neEigs$year <- gsub("92-HK", "1992", x = neEigs$year)
+neEigs$year <- gsub("HK", "2022", x = neEigs$year)
+neEigs$year <- gsub("SA", "2022", x = neEigs$year)
+neEigs$year <- gsub("AL", "2022", x = neEigs$year)
+neEigs$year <- gsub("MO", "2022", x = neEigs$year)
+
+neEigs <- read_csv("3.pca/neEigs.csv")
+
+palReg <- c("#E2A3C7", "#778da9", "#EC7D10", "#63A46C")
+
+# Plot PCA
+nePCA <- ggplot(data = neEigs, mapping = aes(x = coords.Axis1, y = coords.Axis2, 
+                                             color = Region, shape = as.factor(year))) +
+  geom_point(size = 3) +
+  scale_color_manual(values = palReg) +
+  labs(subtitle = "PCA of 10,945 SNPs",
+       x = "Principal Component 1 (9.29%)",
+       y = "Principal Component 2 (5.89%)",
+       tag = "(B)") +
+  guides(shape = "none", color = guide_legend(title = "Region"), tab = "(B)") +
+  scale_shape_manual(values=c(17, 16))+
+  theme_light(base_size = 16) +
+  stat_ellipse(type = "norm", linetype = 2) +
+  theme(legend.position=c(.75,.175))
+
+png(filename= "3.pca/nePCA.png", width = 6.5, height = 6.5, units = "in", res = 100)
+nePCA
+dev.off()
+
+#write.csv(neEigs, file = "3.pca/neEigs.csv")
+
+#### Combined Figure ####
+library(gridExtra)
+library(grid)
+
+jpeg(filename= "3.pca/pcaFig.jpg", width = 11, height = 6.75, units = "in", res = 100)
+grid.arrange(lpRegs, nePCA, ncol = 2)
+dev.off()
 
 
+#### Previous Code ####
 
 # Load in popfile from STACKS run
 popList <- read.csv(file = "3.pca/noOut.csv")
