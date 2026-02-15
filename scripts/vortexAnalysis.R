@@ -7,19 +7,13 @@
 
 # Load libraries
 library(tidyverse)
-library(vortexR)
 
 # Load in translocation vortex runs
-ALsup <- collate_dat(project = "translocations_AlbanySupplement", runs = 500,
-                        dir_in = "5.translocation/VOutput/translocations/VOutput/",
-                        dir_out = "6.vortexAnalysis/")
+tNe <- read_delim("5.translocation/VOutput/translocations/VOutput/collatedNe.txt",
+                         col_names = FALSE) |>
+  rename("Population" = X1, "Year" = X2, "Ne" = X3) |>
+  na.omit()
 
-SAsup <- collate_dat(project = "translocations_SaratogaSupplement", runs = 250,
-                     dir_in = "5.translocation/VOutput/translocations/VOutput/",
-                     dir_out = "6.vortexAnalysis/")
+ggplot(tNe, mapping = aes(x = Year, y = Ne, color = Population)) +
+  geom_point()
 
-MOsup <- collate_dat(project = "translocations_AlbanySupplement", runs = 250,
-                     dir_in = "5.translocation/VOutput/translocations/VOutput/",
-                     dir_out = "6.vortexAnalysis/")
-
-effAL <- Ne(data = ALsup, gen = 4, yr0 = 1, yrt = 160, dir_out = "6.vortexAnalysis/")

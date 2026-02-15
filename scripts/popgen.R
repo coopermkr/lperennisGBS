@@ -7,18 +7,18 @@
 #'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 #'
 
-library(ggplot2)
 library(tidyverse)
 library(hierfstat)
 library(adegenet)
+library(poppr)
 library(performance)
 library(broom)
 library(vcfR)
 
 # Load VCF
-nevcf <- read.vcfR("2.stacks/neFiltered.vcf")
+nevcf <- read.vcfR("2.stacks/allPopsFiltered.vcf")
 
-neList <- read.delim(file = "2.stacks/nemap.txt", header = FALSE) |>
+neList <- read.delim(file = "2.stacks/refmap.txt", header = FALSE) |>
   rename(id = V1,
          pop = V2) |>
   filter(id %in% colnames(nevcf@gt))
@@ -26,10 +26,30 @@ neList <- read.delim(file = "2.stacks/nemap.txt", header = FALSE) |>
 # Convert to genind
 neind <- vcfR2genind(nevcf, pop = neList$pop, return.alleles = TRUE)
 
+# Calculate effective population size
+
+
 # Calculate locus-level diversity 
 lpHier <- genind2hierfstat(neind)
 
-#lp.div <- basic.stats(data = lpHier, diploid = TRUE, digits = 4)
+# Calculate allelic richness
+ar <- allelic.richness(lpHier)
+names(ar)
+
+summary(ar$Ar)
+
+ar <- as.data.frame(ar$Ar)
+
+meanAr <- colMeans(ar)
+
+# Poppr Summary Statistics
+lpalex <- genind2genalex(neind)
+lpPop <- poppr(lpalex)
+
+#write_csv(lpPop, "3.popgen/poppprOutput.csv")
+
+
+lp.div <- basic.stats(data = lpHier, diploid = TRUE, digits = 4)
 
 # Calculate mean gene diversities by population
 div <- data.frame(Hs = hierfstat::Hs(lpHier),
@@ -42,7 +62,7 @@ div <- data.frame(Hs = hierfstat::Hs(lpHier),
 # Calculate mean observed heterozygosities by population
 lpHet <- hierfstat::Ho(lpHier)
 
-#write.csv(x = div, file = "3.popgen/neDiversity.csv")
+#write.csv(x = div, file = "3.popgen/lpDiversity.csv")
 
 div <- read.csv(file = "3.popgen/neDiversity.csv") |>
   rename(Pop = X)
@@ -117,13 +137,13 @@ Region = c("Vermont", "New Hampshire", "New Hampshire", "New York",
            "New York")
 
 inbred <- data.frame(ll = inbredHier$fis.ci[,,1], 
-           pop = unique(neList$pop),
-           Region = Region) |>
+           pop = unique(neList$pop)) |>
+#           Region = Region) |>
   rename(ll = ll.ll,
          hl = ll.hl) |>
   mutate(Fis = (ll+hl)/2)
 
-#write.csv(inbred, "3.popgen/inbreeding.csv")
+write.csv(inbred, "3.popgen/inbreeding.csv")
 
 inbred <- read_csv("3.popgen/inbreeding.csv") |>
   select(!...1)
