@@ -59,15 +59,15 @@ afFilt |> group_by(population) |> count()
 afFilt |> ungroup() |>
   filter(population == "VT22") |>
   arrange(population, chromPos) |>
-  select(major, minor) |>
-  write_delim(file = "5.translocation/allelefreqs/VT.af", delim = " ", col_names = FALSE)
+  select(major, minor)
+#  write_delim(file = "5.translocation/allelefreqs/VT.af", delim = " ", col_names = FALSE)
 
 # VT and seed bank
 afFilt |> ungroup() |>
   filter(population %in% c("VT22", "VT92")) |>
   arrange(population, chromPos) |>
-  select(major, minor) |>
-  write_delim(file = "5.translocation/allelefreqs/VTtransloc.af", delim = " ", col_names = FALSE)
+  select(major, minor)
+#  write_delim(file = "5.translocation/allelefreqs/VTtransloc.af", delim = " ", col_names = FALSE)
 
 ### All NH populations supplemented by AL
 Auburn <- afFilt |> ungroup() |>
@@ -91,7 +91,7 @@ Saratoga <- afFilt |> ungroup() |>
   arrange(population, chromPos)
 
 Montague <- afFilt |> ungroup() |>
-  filter(population == "MA") |>
+  filter(population == "MO") |>
   arrange(population, chromPos)
 
 # For Concord/Albany real life translocation:
@@ -103,21 +103,21 @@ CNAL |>
 
 # Bind together: Three supplemented pops, three solo pops, donor pop
 # Albany supplement
-NHAL <- rbind(Auburn, Hooksett, Concord, Auburn, Hooksett, Concord, Albany)
-# Should be 25760 * 7 = 180320 rows
+NHAL <- rbind(Auburn, Hooksett, Concord, Auburn, Hooksett, Concord, Albany, Albany)
+# Should be 25760 * 8 = 206080 rows
 
 NHAL |> select(major, minor) |>
   write_delim(file = "5.translocation/allelefreqs/NHAL.af", delim = " ", col_names = FALSE)
 
 ## All following simulations only need to run the supplemented pops since the solos count for everyone
 # Saratoga supplement
-NHSA <- rbind(Auburn, Hooksett, Concord, Saratoga)
+NHSA <- rbind(Auburn, Hooksett, Concord, Saratoga, Saratoga)
 
 NHSA |> select(major, minor) |>
   write_delim(file = "5.translocation/allelefreqs/NHSA.af", delim = " ", col_names = FALSE)
 
 # Montague supplement
-NHMO <- rbind(Auburn, Hooksett, Concord, Montague)
+NHMO <- rbind(Auburn, Hooksett, Concord, Montague, Montague)
 
 NHMO |> select(major, minor) |>
   write_delim(file = "5.translocation/allelefreqs/NHMO.af", delim = " ", col_names = FALSE)

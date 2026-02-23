@@ -111,7 +111,7 @@ r2(pcatMod)
 tidy(pcatMod) # Significant coefficient: each increment of pcat increases MVP by 7
 
 # Try pcat as a squared predictor
-pcatSqr <- lm(mvpSize ~ poly(pcat, 2),
+pcatSqr <- lm(mvpSize ~ poly(pcat, 2, raw = TRUE),
               data = minCat)
 
 check_predictions(pcatSqr) # Good
@@ -131,9 +131,37 @@ name_vec <- c("linear", "quad")
 aictab(cand.set = mod_list, modnames = name_vec)
 # The square wins
 
+# Visualize model
+#Make predictions and backtransform them to the original scale
+mvpPred <- data_grid(data = minCat,
+                     pcat = seq_range(c(0, 10), 100))
+
+#Because we added 1 at the start to allow for the log transform
+#We have to subtract 1 now.
+mvpPred <- augment(pcatSqr,
+                    newdata = mvpPred,
+                    interval = "confidence")
+mvpPred
+
+#Data visualization
+mvpPlot <- ggplot(data = mvpPred,
+                   mapping = aes(x = pcat,
+                                 y = .fitted,
+                                 ymin = .lower,
+                                 ymax = .upper,
+                                 color = .fitted)) +
+  geom_ribbon(fill = "lightgrey", color = NA) +
+  geom_line() +
+  labs()
+
+mvpGrid <- seq(min(minCat$pcat), max(minCat$pcat), length.out = 100)
+mvpGrid$preds <- predict(pcatSqr, newdata = data.frame(pcat = mvpGrid, pcat2 = mvpGrid^2))
+
 # Plot the line, calculate means and standard deviations
 mvpCat <- ggplot(minCat, mapping = aes(x = pcat, y = mvpSize, color = pcat)) +
   geom_point() + stat_smooth(method = "lm", color = "black", formula = y ~ poly(x, 2)) +
+  #geom_line(data = mvpPred, aes(x = pcat, y = .fitted)) +
+  #geom_ribbon(data = mvpPred, aes(x = pcat, ymin = .lower, ymax = .upper), fill = "lightgrey", color = NA) +
   theme_light(base_size = 20) +
   labs(x = "Catastrophe (probability/year)", y = "Minimum Viable Population Size",
        tag = "(B)") +

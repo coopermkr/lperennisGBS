@@ -16,7 +16,7 @@ library(broom)
 library(vcfR)
 
 # Load VCF
-nevcf <- read.vcfR("2.stacks/allPopsFiltered.vcf")
+nevcf <- read.vcfR("2.stacks/refiltered.allpops.vcf")
 
 neList <- read.delim(file = "2.stacks/refmap.txt", header = FALSE) |>
   rename(id = V1,
@@ -26,27 +26,33 @@ neList <- read.delim(file = "2.stacks/refmap.txt", header = FALSE) |>
 # Convert to genind
 neind <- vcfR2genind(nevcf, pop = neList$pop, return.alleles = TRUE)
 
-# Calculate effective population size
+# Take out 92HK and PM populations-- too few samples
+neind <- neind[indNames(neind) != c("../1.align/sorted.trim.92-HK-19", "../1.align/sorted.trim.92-HK-21")] 
+neind <- neind[indNames(neind) != c("../1.align/sorted.trim.PM-10", "../1.align/sorted.trim.PM-5", "../1.align/sorted.trim.PM3")]
+
+# Treat missing data
+neind@tab <- tab(neind, freq = TRUE, NA.method = "mean")
+
 
 
 # Calculate locus-level diversity 
 lpHier <- genind2hierfstat(neind)
 
 # Calculate allelic richness
-ar <- allelic.richness(lpHier)
-names(ar)
-
-summary(ar$Ar)
-
-ar <- as.data.frame(ar$Ar)
-
-meanAr <- colMeans(ar)
+# ar <- allelic.richness(lpHier)
+# names(ar)
+# 
+# summary(ar$Ar)
+# 
+# ar <- as.data.frame(ar$Ar)
+# 
+# meanAr <- colMeans(ar)
 
 # Poppr Summary Statistics
 lpalex <- genind2genalex(neind)
 lpPop <- poppr(lpalex)
 
-#write_csv(lpPop, "3.popgen/poppprOutput.csv")
+write_csv(lpPop, "3.popgen/poppprOutput.csv")
 
 
 lp.div <- basic.stats(data = lpHier, diploid = TRUE, digits = 4)
@@ -62,7 +68,7 @@ div <- data.frame(Hs = hierfstat::Hs(lpHier),
 # Calculate mean observed heterozygosities by population
 lpHet <- hierfstat::Ho(lpHier)
 
-#write.csv(x = div, file = "3.popgen/lpDiversity.csv")
+write.csv(x = div, file = "3.popgen/lpDiversity.csv")
 
 div <- read.csv(file = "3.popgen/neDiversity.csv") |>
   rename(Pop = X)

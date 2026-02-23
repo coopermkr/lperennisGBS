@@ -13,7 +13,7 @@ library(tidyverse)
 
 #### Calculate PCA
 # Read in the VCF we just saved
-missvcf <- read.vcfR("2.stacks/allPopsFiltered.vcf")
+missvcf <- read.vcfR("2.stacks/refiltered.allpops.vcf")
 
 # Prepare population info
 popList <- read.delim(file = "2.stacks/refmap.txt", header = FALSE) |>
@@ -23,6 +23,9 @@ popList <- read.delim(file = "2.stacks/refmap.txt", header = FALSE) |>
 
 # Convert VCF to a genInd object and provide population assignments
 lpInd <- vcfR2genind(missvcf, pop = popList$pop)
+lpInd <- lpInd[indNames(lpInd) != c("../1.align/sorted.trim.92-HK-19", "../1.align/sorted.trim.92-HK-21")] 
+lpInd <- lpInd[indNames(lpInd) != c("../1.align/sorted.trim.PM-10", "../1.align/sorted.trim.PM-5", "../1.align/sorted.trim.PM3")]
+
 
 # Mean missing data
 x.lp <- tab(lpInd, freq = TRUE, NA.method = "mean")
@@ -35,7 +38,7 @@ eigCoords <- pca.lp$li |>
   cbind(popList) |>
   mutate(region = pop)
 
-#write.csv(eigCoords, file = "3.pca/lpEigens.csv")
+write.csv(eigCoords, file = "3.pca/lpEigens.csv")
 
 
 #### Graph PCA
@@ -71,30 +74,30 @@ lpPops <- ggplot(data = eigCoords, mapping = aes(x = Axis1, y = Axis2, color = p
 #dev.off()
 
 # If we want to simplify and graph by our 6 regions:
-eigCoords$region <- gsub("92-CL", "Vermont", x = eigCoords$region)
-eigCoords$region <- gsub("CL", "Vermont", x = eigCoords$region)
-eigCoords$region <- gsub("AB", "New Hampshire", x = eigCoords$region)
-eigCoords$region <- gsub("CN", "New Hampshire", x = eigCoords$region)
-eigCoords$region <- gsub("92-HK", "New Hampshire", x = eigCoords$region)
-eigCoords$region <- gsub("HK", "New Hampshire", x = eigCoords$region)
-eigCoords$region <- gsub("SA", "New York", x = eigCoords$region)
-eigCoords$region <- gsub("AL", "New York", x = eigCoords$region)
-eigCoords$region <- gsub("MO", "Massachusetts", x = eigCoords$region)
-eigCoords$region <- gsub("ANF", "Florida", x = eigCoords$region)
-eigCoords$region <- gsub("NK", "Florida", x = eigCoords$region)
-eigCoords$region <- gsub("BW", "Florida", x = eigCoords$region)
-eigCoords$region <- gsub("^C$", "Midwest/Midatlantic", x = eigCoords$region)
-eigCoords$region <- gsub("^PM$", "Midwest/Midatlantic", x = eigCoords$region)
-eigCoords$region <- gsub("^F$", "Midwest/Midatlantic", x = eigCoords$region)
-eigCoords$region <- gsub("^M$", "Midwest/Midatlantic", x = eigCoords$region)
-eigCoords$region <- gsub("^P$", "Midwest/Midatlantic", x = eigCoords$region)
+eigCoords$region <- gsub("VT1-92", "Vermont", x = eigCoords$region)
+eigCoords$region <- gsub("VT1-22", "Vermont", x = eigCoords$region)
+eigCoords$region <- gsub("NH3", "New Hampshire", x = eigCoords$region)
+eigCoords$region <- gsub("NH1", "New Hampshire", x = eigCoords$region)
+#eigCoords$region <- gsub("92-HK", "New Hampshire", x = eigCoords$region)
+eigCoords$region <- gsub("NH2-22", "New Hampshire", x = eigCoords$region)
+eigCoords$region <- gsub("NY2", "New York", x = eigCoords$region)
+eigCoords$region <- gsub("NY1", "New York", x = eigCoords$region)
+eigCoords$region <- gsub("MA1", "Massachusetts", x = eigCoords$region)
+eigCoords$region <- gsub("FL1", "Florida", x = eigCoords$region)
+eigCoords$region <- gsub("FL3", "Florida", x = eigCoords$region)
+eigCoords$region <- gsub("FL2", "Florida", x = eigCoords$region)
+eigCoords$region <- gsub("MI2", "Midwest/Midatlantic", x = eigCoords$region)
+eigCoords$region <- gsub("MD2", "Midwest/Midatlantic", x = eigCoords$region)
+eigCoords$region <- gsub("PA1S", "Midwest/Midatlantic", x = eigCoords$region)
+eigCoords$region <- gsub("IN2", "Midwest/Midatlantic", x = eigCoords$region)
+#eigCoords$region <- gsub("PM", "Midwest/Midatlantic", x = eigCoords$region)
 
 palFl <- c("#C200FB","#E2A3C7", "#DC136C", "#778da9", "#EC7D10", "#63A46C")
 
 lpRegs <- ggplot(data = eigCoords, mapping = aes(x = Axis1, y = Axis2, color = region)) +
   geom_point(size = 3) +
   scale_color_manual(values = palFl) +
-  labs(subtitle = "PCA of 20,184 SNPs",
+  labs(subtitle = "PCA of 40,118 SNPs",
        x = "Principal Component 1 (50.6%)",
        y = "Principal Component 2 (3.14%)",
        tag = "(A)") +
@@ -115,7 +118,7 @@ lpInd <- vcfR2genind(lpvcf, pop = popList$pop)
 
 lpInd$pop # We want to keep 1:33, 52:104, 116:136
 
-nofl <- lpInd[c(1:33, 51:86, 98:114),]
+nofl <- lpInd[c(1:35, 54:113, 125:142),]
 
 # check it worked
 nofl$pop
@@ -178,17 +181,18 @@ nevcf <- read.vcfR("2.stacks/neFiltered.vcf")
 # Prepare population info
 neList <- read.delim(file = "2.stacks/nemap.txt", header = FALSE) |>
   rename(id = V1,
-         pop = V2) |>
-  filter(id %in% colnames(nevcf@gt))
+         pop = V2)
 
 # Convert VCF to a genInd object and provide population assignments
 neInd <- vcfR2genind(nevcf, pop = neList$pop)
+
+neInd <- lpInd[row.names(lpInd@tab) %in% neList$id]
 
 # Mean missing data
 x.ne <- tab(neInd, freq = TRUE, NA.method = "mean")
 
 # Calculate PCA
-pca.ne <- dudi.pca(x.ne, center = TRUE, scale = FALSE, scannf = FALSE, nf = 80)
+pca.ne <- dudi.pca(x.ne, center = TRUE, scale = FALSE, scannf = FALSE, nf = 83)
 
 eig.perc <- 100*pca.ne$eig/sum(pca.ne$eig)
 
@@ -196,7 +200,9 @@ eig.perc <- 100*pca.ne$eig/sum(pca.ne$eig)
 neEigs <- data.frame(coords = pca.ne$li,
                      pops = neList$pop,
                      Region = neList$pop,
-                     year = neList$pop)
+                     year = neList$pop) |>
+  mutate(Region = str_remove_all(pops, '[123456789-]'),
+         year = as.factor(case_when(year == "VT1-92" ~ 92, .default = 22)))
 
 # If we want to simplify and graph by our 6 regions:
 neEigs$Region <- gsub("92-CL", "Vermont", x = neEigs$Region)
@@ -214,7 +220,6 @@ neEigs$year <- gsub("92-CL", "1992", x = neEigs$year)
 neEigs$year <- gsub("CL", "2022", x = neEigs$year)
 neEigs$year <- gsub("AB", "2022", x = neEigs$year)
 neEigs$year <- gsub("CN", "2022", x = neEigs$year)
-neEigs$year <- gsub("92-HK", "1992", x = neEigs$year)
 neEigs$year <- gsub("HK", "2022", x = neEigs$year)
 neEigs$year <- gsub("SA", "2022", x = neEigs$year)
 neEigs$year <- gsub("AL", "2022", x = neEigs$year)
@@ -226,20 +231,20 @@ palReg <- c("#E2A3C7", "#778da9", "#EC7D10", "#63A46C")
 
 # Plot PCA
 nePCA <- ggplot(data = neEigs, mapping = aes(x = coords.Axis1, y = coords.Axis2, 
-                                             color = Region, shape = as.factor(year))) +
+                                             color = Region, shape = year)) +
   geom_point(size = 3) +
+  scale_shape_manual(values = c(16, 17)) +
   scale_color_manual(values = palReg) +
   labs(subtitle = "PCA of 10,945 SNPs",
-       x = "Principal Component 1 (9.29%)",
-       y = "Principal Component 2 (5.89%)",
+       x = "Principal Component 1 (10.6%)",
+       y = "Principal Component 2 (6.51%)",
        tag = "(B)") +
   guides(shape = "none", color = guide_legend(title = "Region"), tab = "(B)") +
-  scale_shape_manual(values=c(17, 16))+
-  theme_light(base_size = 16) +
+  theme_light(base_size = 12) +
   stat_ellipse(type = "norm", linetype = 2) +
-  theme(legend.position=c(.75,.175))
+  theme(legend.position=c(.85,.64))
 
-png(filename= "3.pca/nePCA.png", width = 6.5, height = 6.5, units = "in", res = 100)
+png(filename= "3.pca/nePCA.png", width = 315, height = 380)
 nePCA
 dev.off()
 
