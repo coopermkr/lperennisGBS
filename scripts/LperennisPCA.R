@@ -242,7 +242,7 @@ nePCA <- ggplot(data = neEigs, mapping = aes(x = coords.Axis1, y = coords.Axis2,
   guides(shape = "none", color = guide_legend(title = "Region"), tab = "(B)") +
   theme_light(base_size = 12) +
   stat_ellipse(type = "norm", linetype = 2) +
-  theme(legend.position=c(.85,.64))
+  theme(legend.position=c(.875,.875))
 
 png(filename= "3.pca/nePCA.png", width = 315, height = 380)
 nePCA

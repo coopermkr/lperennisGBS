@@ -16,6 +16,7 @@ library(grid)
 library(gridExtra)
 
 meta <- tibble(Population = c("AL", "MO", "SA", "AB", "ABAL", "ABMO", "ABSA", "CN", "CNAL", "CNMO", "CNSA", "HK", "HKAL", "HKMO", "HKSA"),
+               Region = c("NY", "MA", "NY", "NH", NA, NA, NA, "NH", NA, NA, NA, "NH", NA, NA, NA),
                nPops = str_length(Population)/2,
                size = c("large", "small", "medium", "small", "small-large", "small-small", "small-medium",
                         "large", "large-large", "small-large", "medium-large",
@@ -188,14 +189,18 @@ npopEM <- emmeans(npopGLM, specs = ~ nPops) |>
   confint() # No significance
 
 # Plot population vs. meanNe
+palReg <- c( "#E2A3C7", "#778da9", "#EC7D10", "#63A46C")
+
 popNePlot <- suppMeta |>
   filter(nPops == 1) |>
   mutate(Population = as.factor(Population),
          Population = fct_recode(Population, "NH3" = "AB","NY1" = "AL","NH1" = "CN","NH2-22" = "HK", 
                            "MA1" = "MO","NY2" = "SA"),
          Population = factor(Population, levels = c("MA1", "NH1", "NH2-22", "NH3", "NY1", "NY2"))) |>
-  ggplot(suppMeta, mapping = aes(x = Population, y = meanNe)) +
+  ggplot(suppMeta, mapping = aes(x = Population, y = meanNe, color = Region)) +
   geom_boxplot() + theme_light(base_size = 16) +
+  scale_color_manual(values = palReg) +
+  guides(color = "none") +
   labs(x = "Seed Donor Population", y = "Mean Effective Population Size (Ne)",
        subtitle = "Single-Source Founded Population Simulations", tag = "(A)")
 

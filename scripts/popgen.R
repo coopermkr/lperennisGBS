@@ -30,9 +30,14 @@ neind <- vcfR2genind(nevcf, pop = neList$pop, return.alleles = TRUE)
 neind <- neind[indNames(neind) != c("../1.align/sorted.trim.92-HK-19", "../1.align/sorted.trim.92-HK-21")] 
 neind <- neind[indNames(neind) != c("../1.align/sorted.trim.PM-10", "../1.align/sorted.trim.PM-5", "../1.align/sorted.trim.PM3")]
 
+# calculate distances and private alleles
+privA <- private_alleles(neind, report = "data.frame", level = "population")
+
+privA |> group_by(population) |> summarize(nAlleles = sum(count))
+
 # Treat missing data
 neind@tab <- tab(neind, freq = TRUE, NA.method = "mean")
-
+gst <- nei.dist(neind)
 
 
 # Calculate locus-level diversity 
@@ -135,7 +140,7 @@ vegan::mantel(as.dist(fstDist), as.dist(geoDist), method = "pearson", na.rm = TR
 
 #### Inbreeding
 # Calculate population-level Fis CIs by bootstrapping
-inbredHier <- boot.ppfis(lpHier, nboot = 100)
+inbredHier <- boot.ppfis(lpHier, nboot = 500)
 
 Region = c("Vermont", "New Hampshire", "New Hampshire", "New York",
            "Vermont", "New Hampshire",
@@ -152,22 +157,27 @@ inbred <- data.frame(ll = inbredHier$fis.ci[,,1],
 write.csv(inbred, "3.popgen/inbreeding.csv")
 
 inbred <- read_csv("3.popgen/inbreeding.csv") |>
-  select(!...1)
+  filter(!Population %in% c("FL1", "FL2", "FL3", "IN2", "MD2", "MI2", "PA1S")) |>
+  mutate(Fis = (upper + lower)/2,
+         Region = c("MA", "NH", "NH", "NH", "NY", "NY", "VT", "VT"),
+         Region = as.factor(Region))
 
 palReg <- c( "#E2A3C7", "#778da9", "#EC7D10", "#63A46C")
 
 # Plot Fis with confidence intervals
 FisPlot <- ggplot(data = inbred,
-                  mapping = aes(x = pop, y = Fis, color = Region)) +
+                  mapping = aes(x = Population, y = Fis, color = Region)) +
   geom_point(size = 2) +
-  geom_errorbar(mapping = aes(ymin = ll, ymax = hl)) +
-  theme_classic(base_size = 16) +
-  labs(title = "Fis confidence intervals with 1000 bootstraps",
-       x = "Population")
+  geom_errorbar(mapping = aes(ymin = lower, ymax = upper)) +
+  theme_light(base_size = 16) +
+  labs(x = "Population") +
+  scale_color_manual(values = palReg) +
+  guides(color = "none")
 
-#png(filename= "FisPlot.png", width = 700, height = 500)
-#FisPlot
-#dev.off()
+jpeg(filename= "3.popgen/FisPlot.jpg", width = 8, height = 6, units = "in", res = 100)
+FisPlot
+dev.off()
+
 
 # Just Northeast region Fis with confidence intervals
 inbredRegions <- inbredHier |>
